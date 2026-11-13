@@ -1,0 +1,59 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Buka source.zip
+        run: |
+          Z=$(ls *.zip | head -n 1)
+          unzip -o "$Z"
+          rm -f *.zip
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Buat folder Android
+        run: |
+          flutter create --org com.yogisupandi --project-name si_pintar --platforms android .
+          rm -rf test
+          python3 tool/patch_android.py
+
+      - name: Ambil paket
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Siapkan file
+        run: cp build/app/outputs/flutter-apk/app-release.apk SiPintar.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SiPintar-apk
+          path: SiPintar.apk
+
+      - name: Terbitkan di Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Si Pintar v1.0.${{ github.run_number }}
+          body: Download file SiPintar.apk di bawah, lalu instal di HP Android.
+          files: SiPintar.apk
